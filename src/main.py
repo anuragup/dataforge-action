@@ -107,6 +107,7 @@ def main():
     fail_below    = int(env_str("FAIL_BELOW_SCORE", "0"))
     post_summary  = env_bool("POST_SUMMARY", True)
     token         = env_str("GITHUB_TOKEN")
+    privacy_mode  = env_bool("PRIVACY_MODE", True)
 
     if not input_pattern:
         print("❌ ERROR: INPUT_FILE is required.")
@@ -153,20 +154,24 @@ def main():
         score = score_data["score"]
         overall_scores.append(score)
 
-        # Console summary
+        # Console summary — no actual data values shown ever
         print(f"  Format detected : {result.format_detected.upper()}")
         print(f"  Records in      : {result.records_in}")
         print(f"  Records out     : {result.records_out}")
         print(f"  Dupes removed   : {result.dupes_removed}")
         print(f"  Values cleaned  : {len(result.changes)}")
+        print(f"  Fields          : {len(result.fields)}")
         print(f"  Health score    : {score}/100 ({score_data['grade']} — {score_data['label']})")
 
         if result.changes:
-            print(f"\n  Changes:")
-            for c in result.changes[:10]:
-                print(f"    row {c['row']} · {c['field']}: {c['reason']}")
-            if len(result.changes) > 10:
-                print(f"    ... +{len(result.changes) - 10} more")
+            from collections import defaultdict
+            grouped = defaultdict(int)
+            for c in result.changes:
+                key = c["reason"].split("(")[-1].rstrip(")") if "(" in c["reason"] else "cleaned"
+                grouped[(c["field"], key)] += 1
+            print(f"\n  Changes by type (no values shown):")
+            for (field, ctype), count in sorted(grouped.items()):
+                print(f"    {field}: {ctype} x{count}")
 
         # Write cleaned output
         out_path = output_file or filepath.replace(".", "_clean.", 1)
