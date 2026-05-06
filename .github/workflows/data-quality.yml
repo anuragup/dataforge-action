@@ -1,0 +1,28 @@
+name: Data Quality
+
+on: [pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run DataForge
+        uses: ./
+        with:
+          input: data/*.csv
+          fail_below_score: 0
+          post_summary: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-quality-report
+          path: "*_report.html"
+          retention-days: 30

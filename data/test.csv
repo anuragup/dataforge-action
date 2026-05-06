@@ -1,0 +1,7 @@
+id,name,email,salary,department
+1,  Alice Johnson  ,ALICE@CO.COM,75000,engineering
+2,Bob,bob@co.com,NULL,Marketing
+1,  Alice Johnson  ,ALICE@CO.COM,75000,engineering
+3,,charlie@co.com,none,HR
+4,Diana,DIANA@CO.COM,92000,MARKETING
+5,Eve,eve@co.com,N/A,engineering

@@ -1,0 +1,82 @@
+name: 'DataForge — Data Quality Check'
+description: 'Clean, validate and score your data files. Posts a markdown summary on every PR.'
+author: 'DataForge'
+
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  input:
+    description: 'Path to input data file or glob (e.g. data/*.csv)'
+    required: true
+  output:
+    description: 'Path to write cleaned output file (optional)'
+    required: false
+    default: ''
+  format:
+    description: 'Input format: auto, csv, tsv, json, kv, logfile'
+    required: false
+    default: 'auto'
+  dedupe:
+    description: 'Remove duplicate rows'
+    required: false
+    default: 'true'
+  normalize_nulls:
+    description: 'Normalize NULL, N/A, none, empty strings to null'
+    required: false
+    default: 'true'
+  trim_whitespace:
+    description: 'Trim leading and trailing whitespace from all values'
+    required: false
+    default: 'true'
+  normalize_email:
+    description: 'Lowercase all email fields'
+    required: false
+    default: 'true'
+  fail_below_score:
+    description: 'Fail the action if health score is below this value (0 to disable)'
+    required: false
+    default: '0'
+  post_summary:
+    description: 'Post a markdown summary as a PR comment'
+    required: false
+    default: 'true'
+  privacy_mode:
+    description: 'Hide actual data values from reports and PR comments (recommended for PII)'
+    required: false
+    default: 'true'
+  github_token:
+    description: 'GitHub token for posting PR comments'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  health_score:
+    description: 'Data quality health score (0-100)'
+  records_in:
+    description: 'Number of records in input'
+  records_out:
+    description: 'Number of records after cleaning'
+  issues_found:
+    description: 'Total number of issues fixed'
+  dupes_removed:
+    description: 'Number of duplicate rows removed'
+  report_path:
+    description: 'Path to the generated HTML report'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    INPUT_FILE: ${{ inputs.input }}
+    OUTPUT_FILE: ${{ inputs.output }}
+    INPUT_FORMAT: ${{ inputs.format }}
+    DEDUPE: ${{ inputs.dedupe }}
+    NORMALIZE_NULLS: ${{ inputs.normalize_nulls }}
+    TRIM_WHITESPACE: ${{ inputs.trim_whitespace }}
+    NORMALIZE_EMAIL: ${{ inputs.normalize_email }}
+    FAIL_BELOW_SCORE: ${{ inputs.fail_below_score }}
+    POST_SUMMARY: ${{ inputs.post_summary }}
+    PRIVACY_MODE: ${{ inputs.privacy_mode }}
+    GITHUB_TOKEN: ${{ inputs.github_token }}
