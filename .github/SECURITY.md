@@ -15,7 +15,7 @@ DataForge processes files **entirely inside your GitHub Actions runner VM**.
 Pin to a specific commit SHA rather than a tag:
 
 ```yaml
-uses: yourname/dataforge-action@SHA_HERE  # v1.0.0
+uses: anuragup/dataforge-action@SHA_HERE  # v1.0.0
 ```
 
 This guarantees you're running exactly the code you reviewed.
