@@ -1,44 +1,29 @@
 # DataForge — Data Quality Check
 
-> Zero-config data quality checks for GitHub Actions. Drop it into any pipeline, get a health score and PR summary instantly.
+> Zero-config data quality checks for GitHub Actions. Health scores, PR comments, and clean output — no cloud account needed.
 
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-DataForge-green?logo=github)](https://github.com/marketplace/actions/dataforge)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-DataForge-green?logo=github)](https://github.com/marketplace/actions/dataforge-data-quality-check)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
----
-
-## What it does
-
-DataForge scans your data files on every PR and tells you exactly what's wrong — before bad data hits your database, breaks your pipeline, or corrupts your analytics.
-
-- ✅ **Auto-detects** CSV, TSV, JSON, Key=Value, and log formats
-- ✅ **Cleans** whitespace, null values, email casing, type mismatches
-- ✅ **Deduplicates** exact duplicate rows
-- ✅ **Scores** your data 0–100 with a per-dimension breakdown
-- ✅ **Posts a markdown summary** directly on your PR
-- ✅ **Generates an HTML report** as a downloadable artifact
-- ✅ **Fails the build** if quality drops below your threshold
-
-No cloud account. No API keys. No config files required.
 
 ---
 
 ## Quickstart
 
 ```yaml
-# .github/workflows/data-quality.yml
 name: Data Quality
-
-on: [pull_request]
+on: [push, pull_request]
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
       - name: Run DataForge
-        uses: yourname/dataforge-action@v1
+        uses: anuragup/dataforge-action@v2
         with:
           input: data/customers.csv
 
@@ -46,182 +31,163 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: data-quality-report
-          path: "*_report.html"
+          path: "**/*_report.html"
+
+      - name: Upload Cleaned Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleaned-data
+          path: "**/*_clean.csv"
 ```
 
-That's it. DataForge will post a comment like this on your PR:
+That's it. You get:
+- A **health score** in the Step Summary tab (every run)
+- A **markdown comment** on your PR
+- A downloadable **HTML report**
+- A **cleaned file** ready to use
 
 ---
 
-## Example PR Comment
+## What it does
 
-### 🔍 DataForge — Data Quality Report
+- ✅ Auto-detects CSV, TSV, JSON, Key=Value, and log formats
+- ✅ Cleans whitespace, null values, email casing, type mismatches
+- ✅ Deduplicates rows and removes empty records
+- ✅ Scores your data 0–100 across 4 dimensions
+- ✅ Outputs a cleaned file
+- 🔒 Privacy mode on by default — actual values never appear in reports or logs
 
-**File:** `customers.csv` | **Format:** `CSV`
+---
 
-### Health Score
+## Example Output
 
 | Score | Grade | Status |
 |-------|-------|--------|
 | **74/100** | **C** | 🟠 Fair |
 
-#### Score Breakdown
+| Metric | Value | Note |
+|--------|-------|------|
+| Records in | 120 | original count |
+| Records out | **115** | ✅ cleaned & kept |
+| Duplicates removed | 3 | intentional |
+| Empty rows removed | 2 | intentional |
+| Parse errors | 0 | ✅ none |
 
-| Dimension | Score | Max | Bar |
-|-----------|-------|-----|-----|
-| Completeness | 22 | 30 | `███████░░░` |
-| Uniqueness | 20 | 25 | `████████░░` |
-| Consistency | 17 | 25 | `██████░░░░` |
-| Validity | 15 | 20 | `███████░░░` |
+| Field | Change Type | Count |
+|-------|-------------|-------|
+| `email` | normalized to lowercase | 8 |
+| `name` | whitespace trimmed | 5 |
+| `salary` | normalized to null | 6 |
 
-### Summary
-
-| Metric | Value |
-|--------|-------|
-| Records in | 120 |
-| Records out | 117 |
-| Duplicates removed | 3 |
-| Values cleaned | 14 |
-| Fields | 6 |
-
-### Changes Applied
-
-| Row | Field | Change |
-|-----|-------|--------|
-| 1 | `email` | "ALICE@CO.COM" → "alice@co.com" (email normalized) |
-| 3 | `salary` | "NULL" → null (nullish value) |
-| 7 | `name` | " Bob " → "Bob" (whitespace trimmed) |
+> 🔒 Privacy mode on — only change types shown, never actual values.
 
 ---
 
-## All Inputs
+## Inputs
 
 | Input | Description | Default |
 |-------|-------------|---------|
 | `input` | File path or glob (`data/*.csv`) | **required** |
-| `output` | Path to write cleaned file | auto |
+| `output` | Path for cleaned file | auto (`*_clean.*`) |
 | `format` | `auto`, `csv`, `tsv`, `json`, `kv`, `logfile` | `auto` |
 | `dedupe` | Remove duplicate rows | `true` |
 | `normalize_nulls` | Treat NULL, N/A, none as null | `true` |
 | `trim_whitespace` | Strip leading/trailing spaces | `true` |
 | `normalize_email` | Lowercase email fields | `true` |
-| `fail_below_score` | Fail build if score < N (0 = disabled) | `0` |
-| `post_summary` | Post markdown summary on PR | `true` |
-| `github_token` | Token for PR comments | `github.token` |
+| `privacy_mode` | Hide actual values from reports | `true` |
+| `fail_below_score` | Fail if score < N (0 = disabled) | `0` |
+| `post_summary` | Post markdown on PR | `true` |
 
-## All Outputs
+## Outputs
 
 | Output | Description |
 |--------|-------------|
 | `health_score` | 0–100 quality score |
 | `records_in` | Input record count |
-| `records_out` | Output record count after cleaning |
-| `issues_found` | Total values cleaned |
-| `dupes_removed` | Duplicate rows removed |
-| `report_path` | Path to generated HTML report |
+| `records_out` | Records after cleaning |
+| `issues_found` | Values cleaned |
+| `dupes_removed` | Duplicates removed |
+| `report_path` | Path to HTML report |
 
 ---
 
-## Common Recipes
+## Recipes
 
-### Fail the build if data quality drops
-
+**Fail the build if quality drops:**
 ```yaml
-- uses: yourname/dataforge-action@v1
+- uses: anuragup/dataforge-action@v2
   with:
     input: data/customers.csv
     fail_below_score: 80
 ```
 
-### Check multiple files
-
+**Check multiple files:**
 ```yaml
-- uses: yourname/dataforge-action@v1
+- uses: anuragup/dataforge-action@v2
   with:
     input: data/*.csv
 ```
 
-### Use the score in later steps
-
+**Use score in later steps:**
 ```yaml
-- uses: yourname/dataforge-action@v1
+- uses: anuragup/dataforge-action@v2
   id: dataforge
   with:
     input: data/leads.csv
 
-- name: Notify if poor quality
-  if: ${{ steps.dataforge.outputs.health_score < 70 }}
-  run: echo "Data quality is low — review before importing"
-```
-
-### Write cleaned file back to repo
-
-```yaml
-- uses: yourname/dataforge-action@v1
-  with:
-    input: data/raw_export.csv
-    output: data/clean_export.csv
-
-- uses: stefanzweifel/git-auto-commit-action@v5
-  with:
-    commit_message: "chore: auto-clean data export"
-    file_pattern: data/clean_export.csv
+- if: ${{ steps.dataforge.outputs.health_score < 70 }}
+  run: echo "⚠ Data quality is low"
 ```
 
 ---
 
-## How the Health Score Works
+## Health Score
 
-| Dimension | Weight | What it measures |
-|-----------|--------|-----------------|
-| Completeness | 30pts | % of non-null values across all columns |
-| Uniqueness | 25pts | Penalises duplicate rows |
-| Consistency | 25pts | Penalises values that needed cleaning |
-| Validity | 20pts | % of records that survived cleaning |
+| Dimension | Weight | Measures |
+|-----------|--------|----------|
+| Completeness | 30pts | % non-null values |
+| Uniqueness | 25pts | Duplicate rows |
+| Consistency | 25pts | Values needing cleanup |
+| Validity | 20pts | Records surviving cleaning |
 
-| Score | Grade | Meaning |
-|-------|-------|---------|
-| 90–100 | A 🟢 | Excellent — production ready |
-| 75–89 | B 🟡 | Good — minor issues |
-| 60–74 | C 🟠 | Fair — review before importing |
-| 40–59 | D 🔴 | Poor — significant issues |
-| 0–39 | F 🔴 | Critical — do not use |
-
----
-
-## License
-
-MIT — free to use, modify and distribute.
+| Score | Grade |
+|-------|-------|
+| 90–100 | A 🟢 Excellent |
+| 75–89 | B 🟡 Good |
+| 60–74 | C 🟠 Fair |
+| 40–59 | D 🟠 Poor |
+| 0–39 | F 🔴 Critical |
 
 ---
 
-## Contributing
+## Tested At Scale
 
-Issues and PRs welcome. If DataForge helped you catch a data problem, consider leaving a ⭐ — it helps others find it.
+| Dataset | Rows | Time | Score |
+|---------|------|------|-------|
+| Clean CSV | 3 | <1s | 100/100 |
+| Messy CSV | 10 | <1s | 53/100 |
+| Messy JSON | 5,000 | <1s | 78/100 |
+| Messy TSV | 20,000 | <1s | 73/100 |
+| Large CSV | 50,000 | ~15s | 74/100 |
+
+---
 
 ## Security & Privacy
 
-DataForge is designed to be safe for use with sensitive data files.
+| | |
+|---|---|
+| 🔒 Data stays on runner | Zero external calls — data never leaves GitHub |
+| 🔒 Privacy mode default | Only change types shown, never values |
+| 🔒 No telemetry | No tracking, no analytics |
+| 🔒 Open source | Every line auditable |
 
-| Protection | Detail |
-|-----------|--------|
-| 🔒 Data stays on runner | Zero calls to external servers — your data never leaves GitHub infrastructure |
-| 🔒 Privacy mode on by default | Actual values never appear in PR comments or reports — only change types and counts |
-| 🔒 No telemetry | No analytics, no tracking, no phoning home |
-| 🔒 One outbound call | Only to the GitHub API to post the PR comment |
-| 🔒 Fully open source | Every line is auditable — verify before you trust |
-
-### Pin to a commit SHA (recommended for production)
-
-Tags can be silently updated. Pin to a commit SHA for guaranteed immutability:
-
+For production, pin to a commit SHA:
 ```yaml
-uses: yourname/dataforge-action@a1b2c3d4  # v1.0.0
+uses: anuragup/dataforge-action@COMMIT_SHA
 ```
 
-### What privacy mode does
+See [SECURITY.md](.github/SECURITY.md) for details.
 
-When `privacy_mode: true` (the default), the PR comment and HTML report show only change **types** and **counts** — never actual before/after values. For example instead of showing `"ALICE@CO.COM" → "alice@co.com"` it shows `email | email normalized | 1`.
+---
 
-See [SECURITY.md](.github/SECURITY.md) for full details.
-# dataforge-action
+MIT Licensed · [Issues & PRs welcome](https://github.com/anuragup/dataforge-action/issues) · ⭐ if it helped
