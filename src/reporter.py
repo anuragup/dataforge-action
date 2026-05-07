@@ -60,13 +60,22 @@ def generate_markdown(filename: str, result: ProcessResult, score_data: dict, pr
     # Summary stats
     lines.append("### Summary")
     lines.append("")
-    lines.append("| Metric | Value |")
-    lines.append("|--------|-------|")
-    lines.append(f"| Records in | {result.records_in} |")
-    lines.append(f"| Records out | {result.records_out} |")
-    lines.append(f"| Duplicates removed | {result.dupes_removed} |")
-    lines.append(f"| Values cleaned | {len(result.changes)} |")
-    lines.append(f"| Fields | {len(result.fields)} |")
+    lines.append("| Metric | Value | Note |")
+    lines.append("|--------|-------|------|")
+    lines.append(f"| Records in | {result.records_in} | original count |")
+    lines.append(f"| Records out | **{result.records_out}** | ✅ cleaned & kept |")
+    lines.append(f"| Duplicates removed | {result.dupes_removed} | intentional removal |")
+    lines.append(f"| Empty rows removed | {result.empty_removed} | intentional removal |")
+    lines.append(f"| Parse errors | {result.parse_errors} | {'✅ none' if result.parse_errors == 0 else '⚠️ check format'} |")
+    lines.append(f"| Values cleaned | {len(result.changes)} | normalizations applied |")
+    lines.append(f"| Fields | {len(result.fields)} | |")
+    lines.append("")
+    # Add clarity note
+    total_removed = result.dupes_removed + result.empty_removed
+    if result.parse_errors == 0 and total_removed > 0:
+        lines.append(f"> ✅ **{result.records_in} → {result.records_out} records**: {result.dupes_removed} duplicates + {result.empty_removed} empty rows removed intentionally. No processing errors.")
+    elif result.parse_errors > 0:
+        lines.append(f"> ⚠️ **{result.parse_errors} rows failed to parse** — check your data format.")
     lines.append("")
 
     # Column completeness — stats only, no values
@@ -157,20 +166,24 @@ def generate_html(filename: str, result: ProcessResult, score_data: dict, privac
             if len(result.changes) > 50:
                 changes_rows += f"<tr><td colspan='3' style='text-align:center;color:#6b7280'>+{len(result.changes)-50} more</td></tr>"
 
-    # Column stats rows
+    # Column stats rows — each column gets its own color based on its completeness
     col_rows = ""
     for col, stats in result.column_stats.items():
         pct = stats["complete_pct"]
         warn = "⚠️" if pct < 80 else ""
+        if pct >= 95:   col_color = "#10b981"  # green
+        elif pct >= 80: col_color = "#f59e0b"  # yellow
+        elif pct >= 60: col_color = "#f97316"  # orange
+        else:           col_color = "#ef4444"  # red
         col_rows += f"""
         <tr>
             <td><code>{col}</code></td>
             <td>
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="width:100px;height:6px;background:#1a1a26;border-radius:3px">
-                        <div style="width:{pct}%;height:100%;background:{score_color};border-radius:3px"></div>
+                        <div style="width:{pct}%;height:100%;background:{col_color};border-radius:3px"></div>
                     </div>
-                    <span>{pct}% {warn}</span>
+                    <span style="color:{col_color}">{pct}% {warn}</span>
                 </div>
             </td>
             <td>{stats['null_count']}</td>
@@ -250,11 +263,25 @@ def generate_html(filename: str, result: ProcessResult, score_data: dict, privac
 
   <div class="stat-grid">
     <div class="stat"><div class="stat-val">{result.records_in}</div><div class="stat-label">Records In</div></div>
-    <div class="stat"><div class="stat-val">{result.records_out}</div><div class="stat-label">Records Out</div></div>
-    <div class="stat"><div class="stat-val">{result.dupes_removed}</div><div class="stat-label">Dupes Removed</div></div>
+    <div class="stat"><div class="stat-val" style="color:#00f5a0">{result.records_out}</div><div class="stat-label">Records Out ✅</div></div>
+    <div class="stat"><div class="stat-val" style="color:#f59e0b">{result.dupes_removed}</div><div class="stat-label">Dupes Removed</div></div>
+    <div class="stat"><div class="stat-val" style="color:#f59e0b">{result.empty_removed}</div><div class="stat-label">Empty Removed</div></div>
     <div class="stat"><div class="stat-val">{len(result.changes)}</div><div class="stat-label">Values Cleaned</div></div>
-    <div class="stat"><div class="stat-val">{len(result.fields)}</div><div class="stat-label">Fields</div></div>
     <div class="stat"><div class="stat-val">{result.format_detected.upper()}</div><div class="stat-label">Format</div></div>
+  </div>
+
+  <div style="background:#111118;border:1px solid #2a2a3d;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-family:'Space Mono',monospace;font-size:0.72rem">
+    <span style="color:#6b7280">RECORD BREAKDOWN &nbsp;·&nbsp;</span>
+    <span style="color:#e8e8f0">{result.records_in} in</span>
+    <span style="color:#6b7280"> = </span>
+    <span style="color:#00f5a0">{result.records_out} kept</span>
+    <span style="color:#6b7280"> + </span>
+    <span style="color:#f59e0b">{result.dupes_removed} dupes</span>
+    <span style="color:#6b7280"> + </span>
+    <span style="color:#f59e0b">{result.empty_removed} empty</span>
+    <span style="color:#6b7280"> + </span>
+    <span style="color:#{"ef4444" if result.parse_errors > 0 else "6b7280"}">{result.parse_errors} errors</span>
+    {"&nbsp;&nbsp;<span style='color:#10b981'>✓ All removals intentional — nothing failed to process</span>" if result.parse_errors == 0 else "&nbsp;&nbsp;<span style='color:#ef4444'>⚠ Some rows failed to parse — check your data format</span>"}
   </div>
 
   <div class="card">
