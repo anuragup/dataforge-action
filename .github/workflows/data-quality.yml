@@ -1,7 +1,5 @@
 name: Data Quality
-
 on: [push, pull_request, workflow_dispatch]
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -9,8 +7,7 @@ jobs:
       pull-requests: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v5
       - name: Run DataForge
         uses: ./
         with:
@@ -18,11 +15,17 @@ jobs:
           fail_below_score: 0
           post_summary: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload HTML Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: data-quality-report
-          path: "*_report.html"
+          path: "**/*_report.html"
+          retention-days: 30
+      - name: Upload Cleaned Data
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: cleaned-data
+          path: "**/*_clean.*"
           retention-days: 30
