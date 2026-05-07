@@ -17,9 +17,11 @@ class ProcessResult:
     records_in: int = 0
     records_out: int = 0
     dupes_removed: int = 0
+    empty_removed: int = 0   # rows where all fields were null/empty
+    parse_errors: int = 0    # rows that failed to parse
     fields: list = field(default_factory=list)
     records: list = field(default_factory=list)
-    changes: list = field(default_factory=list)  # list of change dicts
+    changes: list = field(default_factory=list)
     format_detected: str = "unknown"
     column_stats: dict = field(default_factory=dict)
 
@@ -244,6 +246,7 @@ def process(raw: str, options: dict) -> ProcessResult:
 
     # Remove empty rows before cleaning
     records, empty_removed = remove_empty_rows(records, fields)
+    result.empty_removed = empty_removed
 
     # Clean
     records, changes = clean_records(records, fields, options)
