@@ -173,17 +173,46 @@ def main():
             for (field, ctype), count in sorted(grouped.items()):
                 print(f"    {field}: {ctype} x{count}")
 
-        # Write cleaned output
+        # Write cleaned output — match the input format
         out_path = output_file or filepath.replace(".", "_clean.", 1)
         if result.records and result.fields:
-            import csv, io
-            buf = io.StringIO()
-            writer = csv.DictWriter(buf, fieldnames=result.fields)
-            writer.writeheader()
-            writer.writerows(result.records)
+            import csv, io, json as json_mod
+            detected = result.format_detected.lower()
+
+            if detected == "json":
+                output_data = result.records
+                clean_str = json_mod.dumps(output_data, indent=2, default=str, ensure_ascii=False)
+            elif detected == "tsv":
+                buf = io.StringIO()
+                writer = csv.DictWriter(buf, fieldnames=result.fields, delimiter="\t")
+                writer.writeheader()
+                writer.writerows(result.records)
+                clean_str = buf.getvalue()
+            elif detected == "kv":
+                lines = []
+                for r in result.records:
+                    for k in result.fields:
+                        v = r.get(k)
+                        lines.append(f"{k}={v if v is not None else ''}")
+                clean_str = "\n".join(lines)
+            elif detected == "logfile":
+                lines = []
+                for r in result.records:
+                    ts = r.get("timestamp", "")
+                    level = r.get("level", "")
+                    msg = r.get("message", "")
+                    lines.append(f"[{ts}] {level.ljust(5)} {msg}")
+                clean_str = "\n".join(lines)
+            else:
+                buf = io.StringIO()
+                writer = csv.DictWriter(buf, fieldnames=result.fields)
+                writer.writeheader()
+                writer.writerows(result.records)
+                clean_str = buf.getvalue()
+
             with open(out_path, "w", encoding="utf-8") as f:
-                f.write(buf.getvalue())
-            print(f"\n  ✓ Cleaned file written to: {out_path}")
+                f.write(clean_str)
+            print(f"\n  \u2713 Cleaned file written to: {out_path} ({detected})")
 
         # Generate HTML report
         filename = Path(filepath).name
