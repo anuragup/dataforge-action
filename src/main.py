@@ -199,6 +199,13 @@ def main():
         md = generate_markdown(filename, result, score_data, privacy_mode=privacy_mode)
         all_markdowns.append(md)
 
+        # Write to GitHub Step Summary — visible on every run, not just PRs
+        summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_file:
+            with open(summary_file, "a", encoding="utf-8") as f:
+                f.write(md + "\n\n")
+            print(f"  ✓ Step summary written")
+
         # Set outputs for last file (or aggregate later)
         set_output("health_score", str(score))
         set_output("records_in", str(result.records_in))
