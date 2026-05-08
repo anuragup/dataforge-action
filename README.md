@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run DataForge
-        uses: anuragup/dataforge-action@v2
+        uses: anuragup/dataforge-action@v3
         with:
           input: data/customers.csv
 
@@ -115,7 +115,7 @@ That's it. You get:
 
 **Fail the build if quality drops:**
 ```yaml
-- uses: anuragup/dataforge-action@v2
+- uses: anuragup/dataforge-action@v3
   with:
     input: data/customers.csv
     fail_below_score: 80
@@ -123,14 +123,14 @@ That's it. You get:
 
 **Check multiple files:**
 ```yaml
-- uses: anuragup/dataforge-action@v2
+- uses: anuragup/dataforge-action@v3
   with:
     input: data/*.csv
 ```
 
 **Use score in later steps:**
 ```yaml
-- uses: anuragup/dataforge-action@v2
+- uses: anuragup/dataforge-action@v3
   id: dataforge
   with:
     input: data/leads.csv
